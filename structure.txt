@@ -1,0 +1,31 @@
+sih-frontend/
+├── node_modules/
+├── src/
+│   ├── components/
+│   │   └── common/
+│   │       ├── Layout.jsx
+│   │       ├── ProtectedRoute.jsx
+│   │       ├── CameraCapture.jsx
+│   │       └── ScanResultCard.jsx
+│   ├── pages/
+│   │   ├── LandingPage.jsx
+│   │   ├── Login.jsx
+│   │   ├── Register.jsx
+│   │   ├── ScanPage.jsx
+│   │   ├── ResultPage.jsx
+│   │   ├── HistoryPage.jsx
+│   │   ├── ComplaintPage.jsx
+│   │   ├── InspectorDashboard.jsx
+│   │   ├── AuditPage.jsx
+│   │   ├── ComplaintQueue.jsx
+│   │   └── ViolationDetail.jsx
+│   ├── utils/
+│   │   ├── api.js
+│   │   ├── auth.js
+│   │   └── mockData.js
+│   ├── App.jsx
+│   ├── main.jsx
+│   └── index.css
+├── index.html
+├── package.json
+└── vite.config.js
