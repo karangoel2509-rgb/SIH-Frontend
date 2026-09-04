@@ -17,6 +17,7 @@ import {
   ChevronLeft,
   Info,
 } from 'lucide-react';
+import { citizenScan, submitComplaint } from '../utils/api';
 
 export default function CitizenScanner() {
   const navigate = useNavigate();
@@ -27,39 +28,31 @@ export default function CitizenScanner() {
   const [showReportModal, setShowReportModal] = useState(false);
   const [location, setLocation] = useState(null);
   const [showComplaintForm, setShowComplaintForm] = useState(false);
+  const [error, setError] = useState(null);
 
-  // Mock scan data
-  const mockScanData = {
-    product: 'Sample Product',
-    complianceScore: 72,
-    fields: {
-      mrp: { value: '₹45.00', status: 'valid' },
-      netQuantity: { value: '200g', status: 'valid' },
-      mfgDate: { value: '04/2025', status: 'valid' },
-      expiryDate: { value: '10/2025', status: 'warning', daysLeft: 25 },
-      consumerCare: { value: null, status: 'missing' },
-      manufacturer: { value: 'Sample Foods Ltd.', status: 'valid' },
-    },
-    violations: [
-      { type: 'missing_consumer_care', severity: 'critical', message: 'Consumer care details absent' },
-      { type: 'date_format', severity: 'warning', message: 'Mfg date not in DD/MM/YYYY format' },
-    ],
-  };
-
-  const handleFileUpload = (event) => {
+  const handleFileUpload = async (event) => {
     const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImage(e.target.result);
-        setIsScanning(true);
-        setTimeout(() => {
-          setScanResult(mockScanData);
-          setIsScanning(false);
-        }, 1500);
-      };
-      reader.readAsDataURL(file);
-    }
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      setImage(e.target.result);
+      setIsScanning(true);
+      setError(null);
+
+      try {
+        // Convert base64 data URL to Blob
+        const blob = await (await fetch(e.target.result)).blob();
+        const result = await citizenScan(blob);
+        setScanResult(result);
+      } catch (err) {
+        setError('Backend not connected. Using mock data for demo.');
+        // Fallback to mock data is handled inside api.js (USE_MOCK=true)
+      } finally {
+        setIsScanning(false);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleCapture = () => {
@@ -74,13 +67,23 @@ export default function CitizenScanner() {
           setShowReportModal(true);
         },
         () => {
-          setLocation({ lat: 28.6139, lng: 77.209 }); // Fallback
+          setLocation({ lat: 28.6139, lng: 77.209 });
           setShowReportModal(true);
         }
       );
     } else {
       setLocation({ lat: 28.6139, lng: 77.209 });
       setShowReportModal(true);
+    }
+  };
+
+  const handleSubmitComplaint = async (complaintData) => {
+    try {
+      await submitComplaint(complaintData);
+      setShowReportModal(false);
+      setShowComplaintForm(true);
+    } catch (err) {
+      alert('Failed to submit complaint. Check backend.');
     }
   };
 
@@ -104,10 +107,7 @@ export default function CitizenScanner() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate('/')}
-                className="p-2 hover:bg-slate-100 rounded-lg transition"
-              >
+              <button onClick={() => navigate('/')} className="p-2 hover:bg-slate-100 rounded-lg transition">
                 <ChevronLeft className="w-6 h-6 text-slate-600" />
               </button>
               <div className="bg-emerald-600 p-2 rounded-lg">
@@ -200,35 +200,42 @@ export default function CitizenScanner() {
           )}
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-lg mb-6">
+            {error}
+          </div>
+        )}
+
         {/* Scan Results */}
         {scanResult && !isScanning && (
           <div className="space-y-6">
             {/* Compliance Score */}
             <div
               className={`bg-white rounded-2xl p-6 shadow-lg border ${
-                scanResult.complianceScore >= 80
+                scanResult.compliance_score >= 80
                   ? 'border-green-200'
-                  : scanResult.complianceScore >= 50
+                  : scanResult.compliance_score >= 50
                   ? 'border-yellow-200'
                   : 'border-red-200'
               }`}
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">{scanResult.product}</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">{scanResult.product_name || 'Unknown Product'}</h3>
                   <p className="text-sm text-slate-500">Verification Result</p>
                 </div>
                 <div className="text-right">
                   <span
                     className={`text-4xl font-bold ${
-                      scanResult.complianceScore >= 80
+                      scanResult.compliance_score >= 80
                         ? 'text-green-600'
-                        : scanResult.complianceScore >= 50
+                        : scanResult.compliance_score >= 50
                         ? 'text-yellow-600'
                         : 'text-red-600'
                     }`}
                   >
-                    {scanResult.complianceScore}%
+                    {scanResult.compliance_score}%
                   </span>
                   <p className="text-sm text-slate-500">Compliance</p>
                 </div>
@@ -239,65 +246,65 @@ export default function CitizenScanner() {
                 <div className="bg-slate-50 p-3 rounded-lg">
                   <div className="flex justify-between items-center mb-1">
                     <Scale className="w-4 h-4 text-slate-500" />
-                    <FieldStatus status={scanResult.fields.mrp.status} />
+                    <FieldStatus status={scanResult.extracted_fields?.mrp?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">MRP</p>
-                  <p className="font-semibold text-slate-900">{scanResult.fields.mrp.value}</p>
+                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.mrp?.value || 'Not found'}</p>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
                   <div className="flex justify-between items-center mb-1">
                     <Package className="w-4 h-4 text-slate-500" />
-                    <FieldStatus status={scanResult.fields.netQuantity.status} />
+                    <FieldStatus status={scanResult.extracted_fields?.net_quantity?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Net Quantity</p>
-                  <p className="font-semibold text-slate-900">{scanResult.fields.netQuantity.value}</p>
+                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.net_quantity?.value || 'Not found'}</p>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
                   <div className="flex justify-between items-center mb-1">
                     <Calendar className="w-4 h-4 text-slate-500" />
-                    <FieldStatus status={scanResult.fields.mfgDate.status} />
+                    <FieldStatus status={scanResult.extracted_fields?.mfg_date?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Manufacturing Date</p>
-                  <p className="font-semibold text-slate-900">{scanResult.fields.mfgDate.value}</p>
+                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.mfg_date?.value || 'Not found'}</p>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
                   <div className="flex justify-between items-center mb-1">
                     <Calendar className="w-4 h-4 text-slate-500" />
-                    <FieldStatus status={scanResult.fields.expiryDate.status} />
+                    <FieldStatus status={scanResult.extracted_fields?.expiry_date?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Expiry Date</p>
-                  <p className="font-semibold text-slate-900">{scanResult.fields.expiryDate.value}</p>
-                  {scanResult.fields.expiryDate.daysLeft && (
-                    <p className="text-xs text-yellow-600 mt-1">⚠ {scanResult.fields.expiryDate.daysLeft} days left</p>
+                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.expiry_date?.value || 'Not found'}</p>
+                  {scanResult.extracted_fields?.expiry_date?.days_left && (
+                    <p className="text-xs text-yellow-600 mt-1">⚠ {scanResult.extracted_fields.expiry_date.days_left} days left</p>
                   )}
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
                   <div className="flex justify-between items-center mb-1">
                     <Phone className="w-4 h-4 text-slate-500" />
-                    <FieldStatus status={scanResult.fields.consumerCare.status} />
+                    <FieldStatus status={scanResult.extracted_fields?.consumer_care?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Consumer Care</p>
                   <p className="font-semibold text-slate-900">
-                    {scanResult.fields.consumerCare.value || 'Not found'}
+                    {scanResult.extracted_fields?.consumer_care?.value || 'Not found'}
                   </p>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
                   <div className="flex justify-between items-center mb-1">
                     <Building2 className="w-4 h-4 text-slate-500" />
-                    <FieldStatus status={scanResult.fields.manufacturer.status} />
+                    <FieldStatus status={scanResult.extracted_fields?.manufacturer?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Manufacturer</p>
-                  <p className="font-semibold text-slate-900">{scanResult.fields.manufacturer.value}</p>
+                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.manufacturer?.value || 'Not found'}</p>
                 </div>
               </div>
 
               {/* Violations */}
-              {scanResult.violations.length > 0 && (
+              {scanResult.violations && scanResult.violations.length > 0 && (
                 <div className="bg-red-50 rounded-xl p-4 mb-4">
                   <h4 className="text-sm font-semibold text-red-700 mb-2">
                     <AlertTriangle className="w-4 h-4 inline mr-1" />
@@ -308,7 +315,7 @@ export default function CitizenScanner() {
                       <div key={index} className="flex items-start gap-2 text-sm">
                         <span
                           className={`mt-1 ${
-                            violation.severity === 'critical' ? 'text-red-500' : 'text-yellow-500'
+                            violation.severity === 'CRITICAL' ? 'text-red-500' : 'text-yellow-500'
                           }`}
                         >
                           ●
@@ -317,10 +324,10 @@ export default function CitizenScanner() {
                           <p className="text-slate-700">{violation.message}</p>
                           <span
                             className={`text-xs font-semibold ${
-                              violation.severity === 'critical' ? 'text-red-600' : 'text-yellow-600'
+                              violation.severity === 'CRITICAL' ? 'text-red-600' : 'text-yellow-600'
                             }`}
                           >
-                            {violation.severity.toUpperCase()}
+                            {violation.severity}
                           </span>
                         </div>
                       </div>
@@ -395,10 +402,7 @@ export default function CitizenScanner() {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => {
-                    setShowReportModal(false);
-                    setShowComplaintForm(true);
-                  }}
+                  onClick={() => handleSubmitComplaint({ scan_id: scanResult.id, description: 'Missing consumer care', location: location })}
                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition"
                 >
                   Submit Complaint
