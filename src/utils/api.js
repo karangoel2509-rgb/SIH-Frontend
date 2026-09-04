@@ -4,7 +4,7 @@ import axios from 'axios';
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // Mock toggle - set to false when backend is ready
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true';
+const USE_MOCK = import.meta.env.VITE_USE_MOCK !== 'false';
 
 // ------------------------------------------------------------------
 // Mock Data (Only used when USE_MOCK is true or backend is unavailable)
