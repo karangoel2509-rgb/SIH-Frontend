@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Shield,
@@ -30,6 +30,22 @@ export default function CitizenScanner() {
   const [showComplaintForm, setShowComplaintForm] = useState(false);
   const [error, setError] = useState(null);
 
+  // Dynamic online/offline state
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
   const handleFileUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -41,13 +57,11 @@ export default function CitizenScanner() {
       setError(null);
 
       try {
-        // Convert base64 data URL to Blob
         const blob = await (await fetch(e.target.result)).blob();
         const result = await citizenScan(blob);
         setScanResult(result);
       } catch (err) {
         setError('Backend not connected. Using mock data for demo.');
-        // Fallback to mock data is handled inside api.js (USE_MOCK=true)
       } finally {
         setIsScanning(false);
       }
@@ -77,13 +91,17 @@ export default function CitizenScanner() {
     }
   };
 
-  const handleSubmitComplaint = async (complaintData) => {
+  const handleSubmitComplaint = async () => {
     try {
-      await submitComplaint(complaintData);
+      await submitComplaint({
+        scan_id: scanResult?.id || 'scan_001',
+        description: 'Violation reported from citizen scan',
+        location: location,
+      });
       setShowReportModal(false);
       setShowComplaintForm(true);
     } catch (err) {
-      alert('Failed to submit complaint. Check backend.');
+      alert('Failed to submit complaint. Please try again.');
     }
   };
 
@@ -118,11 +136,21 @@ export default function CitizenScanner() {
                 <p className="text-xs text-slate-500">Quick Compliance Verification</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                Online
-              </div>
+
+            {/* Dynamic Online/Offline Indicator */}
+            <div
+              className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+                isOnline
+                  ? 'bg-emerald-100 text-emerald-700'
+                  : 'bg-amber-100 text-amber-700'
+              }`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                }`}
+              ></span>
+              {isOnline ? 'Online - Live Sync' : 'Offline - Local Queue Active'}
             </div>
           </div>
         </div>
@@ -210,7 +238,6 @@ export default function CitizenScanner() {
         {/* Scan Results */}
         {scanResult && !isScanning && (
           <div className="space-y-6">
-            {/* Compliance Score */}
             <div
               className={`bg-white rounded-2xl p-6 shadow-lg border ${
                 scanResult.compliance_score >= 80
@@ -222,7 +249,9 @@ export default function CitizenScanner() {
             >
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">{scanResult.product_name || 'Unknown Product'}</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    {scanResult.product_name || 'Unknown Product'}
+                  </h3>
                   <p className="text-sm text-slate-500">Verification Result</p>
                 </div>
                 <div className="text-right">
@@ -249,7 +278,9 @@ export default function CitizenScanner() {
                     <FieldStatus status={scanResult.extracted_fields?.mrp?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">MRP</p>
-                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.mrp?.value || 'Not found'}</p>
+                  <p className="font-semibold text-slate-900">
+                    {scanResult.extracted_fields?.mrp?.value || 'Not found'}
+                  </p>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
@@ -258,7 +289,9 @@ export default function CitizenScanner() {
                     <FieldStatus status={scanResult.extracted_fields?.net_quantity?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Net Quantity</p>
-                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.net_quantity?.value || 'Not found'}</p>
+                  <p className="font-semibold text-slate-900">
+                    {scanResult.extracted_fields?.net_quantity?.value || 'Not found'}
+                  </p>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
@@ -267,7 +300,9 @@ export default function CitizenScanner() {
                     <FieldStatus status={scanResult.extracted_fields?.mfg_date?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Manufacturing Date</p>
-                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.mfg_date?.value || 'Not found'}</p>
+                  <p className="font-semibold text-slate-900">
+                    {scanResult.extracted_fields?.mfg_date?.value || 'Not found'}
+                  </p>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
@@ -276,10 +311,9 @@ export default function CitizenScanner() {
                     <FieldStatus status={scanResult.extracted_fields?.expiry_date?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Expiry Date</p>
-                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.expiry_date?.value || 'Not found'}</p>
-                  {scanResult.extracted_fields?.expiry_date?.days_left && (
-                    <p className="text-xs text-yellow-600 mt-1">⚠ {scanResult.extracted_fields.expiry_date.days_left} days left</p>
-                  )}
+                  <p className="font-semibold text-slate-900">
+                    {scanResult.extracted_fields?.expiry_date?.value || 'Not found'}
+                  </p>
                 </div>
 
                 <div className="bg-slate-50 p-3 rounded-lg">
@@ -299,7 +333,9 @@ export default function CitizenScanner() {
                     <FieldStatus status={scanResult.extracted_fields?.manufacturer?.status || 'missing'} />
                   </div>
                   <p className="text-xs text-slate-500">Manufacturer</p>
-                  <p className="font-semibold text-slate-900">{scanResult.extracted_fields?.manufacturer?.value || 'Not found'}</p>
+                  <p className="font-semibold text-slate-900">
+                    {scanResult.extracted_fields?.manufacturer?.value || 'Not found'}
+                  </p>
                 </div>
               </div>
 
@@ -373,7 +409,10 @@ export default function CitizenScanner() {
                 <MapPin className="w-6 h-6 text-red-600" />
                 <h3 className="text-lg font-semibold text-slate-900">Report Violation</h3>
               </div>
-              <button onClick={() => setShowReportModal(false)} className="p-1 hover:bg-slate-100 rounded-lg">
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="p-1 hover:bg-slate-100 rounded-lg"
+              >
                 <X className="w-5 h-5 text-slate-500" />
               </button>
             </div>
@@ -391,7 +430,9 @@ export default function CitizenScanner() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Violation Description</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Violation Description
+                </label>
                 <textarea
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   rows="3"
@@ -402,7 +443,7 @@ export default function CitizenScanner() {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => handleSubmitComplaint({ scan_id: scanResult.id, description: 'Missing consumer care', location: location })}
+                  onClick={handleSubmitComplaint}
                   className="flex-1 bg-emerald-600 text-white py-3 rounded-xl font-semibold hover:bg-emerald-700 transition"
                 >
                   Submit Complaint

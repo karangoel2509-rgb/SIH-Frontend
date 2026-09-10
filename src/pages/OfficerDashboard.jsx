@@ -210,24 +210,34 @@ export default function OfficerDashboard() {
 
                 {!image ? (
                   <div className="border-2 border-dashed border-slate-300 rounded-xl p-12 text-center hover:border-blue-500 transition">
-                    <Camera className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-                    <p className="text-slate-600 mb-2">Capture or upload package image</p>
+                  <Camera className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+                  <p className="text-slate-600 mb-2">Capture or upload package image</p>
+                  <p className="text-sm text-slate-400 mb-6">Ensure label is well-lit and text is readable</p>
+                  <div className="flex justify-center gap-4">
                     <button
                       onClick={() => fileInputRef.current?.click()}
-                      className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition flex items-center gap-2 mx-auto"
+                      className="bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition flex items-center gap-2"
+                    >
+                      <Camera className="w-5 h-5" />
+                      Capture
+                    </button>
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="bg-white border-2 border-slate-300 text-slate-700 px-6 py-3 rounded-xl font-semibold hover:border-blue-500 hover:text-blue-600 transition flex items-center gap-2"
                     >
                       <Upload className="w-5 h-5" />
-                      Upload / Capture
+                      Upload
                     </button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleFileUpload}
-                      className="hidden"
-                    />
                   </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </div>
                 ) : (
                   <div className="space-y-4">
                     <div className="relative rounded-xl overflow-hidden">
