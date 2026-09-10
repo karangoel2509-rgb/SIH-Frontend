@@ -17,8 +17,10 @@ import {
   Languages,
   TrendingUp,
   Users,
+  LogOut,
 } from 'lucide-react';
 import { officerAudit, officerHistory, generateChallan } from '../utils/api';
+import { officerLogout, getOfficer } from '../utils/auth';
 
 export default function OfficerDashboard() {
   const navigate = useNavigate();
@@ -33,6 +35,23 @@ export default function OfficerDashboard() {
   const [error, setError] = useState(null);
 
   const fileInputRef = useRef(null);
+
+  // Officer session + online/offline detection
+  const officer = getOfficer();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Fetch history when filters change
   useEffect(() => {
@@ -116,10 +135,40 @@ export default function OfficerDashboard() {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                Online - Live Sync
+              {/* Dynamic Online/Offline Indicator */}
+              <div
+                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+                  isOnline
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                  }`}
+                ></span>
+                {isOnline ? 'Online - Live Sync' : 'Offline - Local Queue Active'}
               </div>
+
+              {/* Officer Info
+              <div className="hidden md:flex flex-col items-end pl-3 border-l border-slate-200">
+                <span className="text-xs font-semibold text-slate-900">
+                  {officer?.name || 'Officer'}
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  ID: {officer?.officerId || '—'}
+                </span>
+              </div> */}
+
+              {/* Logout */}
+              <button
+                onClick={officerLogout}
+                className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg text-xs font-semibold hover:bg-red-100 transition flex items-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                Logout
+              </button>
             </div>
           </div>
 

@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import {
   Shield,
   ScanLine,
@@ -16,6 +17,20 @@ import {
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-slate-100">
@@ -33,9 +48,19 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-semibold flex items-center gap-1">
-                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                Online - Live Sync
+              <div
+                className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
+                  isOnline
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-amber-100 text-amber-700'
+                }`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                  }`}
+                ></span>
+                {isOnline ? 'Online - Live Sync' : 'Offline - Local Queue Active'}
               </div>
             </div>
           </div>
@@ -45,10 +70,10 @@ export default function LandingPage() {
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center mb-16">
-          <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-semibold mb-6">
+          {/* <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-semibold mb-6">
             <Scale className="w-4 h-4" />
-            Smart India Hackathon 2026 · Problem Statement 26034
-          </div>
+            Government of India · Legal Metrology Compliance System
+          </div> */}
           <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 mb-6">
             Verify Packaged Commodities
             <br />
@@ -108,7 +133,7 @@ export default function LandingPage() {
 
           {/* Officer Card */}
           <button
-            onClick={() => navigate('/officer')}
+            onClick={() => navigate('/officer-login')}
             className="group bg-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all border-2 border-transparent hover:border-blue-500 text-left"
           >
             <div className="flex items-center gap-4 mb-6">
@@ -144,7 +169,7 @@ export default function LandingPage() {
               </div>
             </div>
             <div className="bg-blue-600 text-white py-3 rounded-xl font-semibold text-center group-hover:bg-blue-700 transition">
-              Open Workbench →
+              Login to Workbench →
             </div>
           </button>
         </div>
